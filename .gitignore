@@ -24,6 +24,8 @@ temp/
 .sass-cache/
 *.tsbuildinfo
 .netlify/
+netlify/functions/*.zip
+netlify/functions/manifest.json
 
 # Local editor and operating-system files
 .vscode/
