@@ -39,7 +39,7 @@ export function ToastProvider({ children }) {
   );
 
   useEffect(() => {
-    const handler = () => push("error", "Penyimpanan LocalStorage penuh atau tidak tersedia. Data terakhir mungkin tidak tersimpan.", "Gagal menyimpan");
+    const handler = (event) => push("error", event.detail?.message || "Gagal menyimpan data. Silakan coba lagi.", "Gagal menyimpan");
     window.addEventListener(STORAGE_ERROR_EVENT, handler);
     return () => window.removeEventListener(STORAGE_ERROR_EVENT, handler);
   }, [push]);

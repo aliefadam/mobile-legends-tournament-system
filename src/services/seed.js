@@ -1,7 +1,5 @@
-import { DEFAULT_ADMIN, STORAGE_KEYS } from "../constants";
-import { hashPassword, nowISO, pad, toISODate } from "../utils/format";
+import { nowISO, pad, toISODate } from "../utils/format";
 import { DEFAULT_MLBB_API } from "./mlbb";
-import { storage } from "./storage";
 
 const FIRST = ["Rizky", "Dimas", "Fajar", "Bagas", "Arya", "Raka", "Naufal", "Galih", "Yoga", "Hafiz", "Ilham", "Bayu", "Andra", "Reza", "Farel", "Kevin", "Dafa", "Rafi", "Satria", "Wahyu"];
 const LAST = ["Pratama", "Saputra", "Hidayat", "Wijaya", "Nugroho", "Ramadhan", "Kurniawan", "Setiawan", "Firmansyah", "Permana", "Maulana", "Santoso"];
@@ -152,27 +150,3 @@ export function buildDemoData() {
 }
 
 export const defaultSettings = () => buildDemoData().settings;
-
-export function createAdminRecord(username = DEFAULT_ADMIN.username, password = DEFAULT_ADMIN.password) {
-  return { username, password_hash: hashPassword(password), created_at: nowISO() };
-}
-
-export function seedDemo() {
-  const d = buildDemoData();
-  storage.set(STORAGE_KEYS.tournaments, d.tournaments);
-  storage.set(STORAGE_KEYS.registrations, d.registrations);
-  storage.set(STORAGE_KEYS.payments, d.payments);
-  storage.set(STORAGE_KEYS.brackets, []);
-  storage.set(STORAGE_KEYS.matches, []);
-  storage.set(STORAGE_KEYS.settings, d.settings);
-}
-
-/** Inisialisasi pertama kali: isi data demo bila LocalStorage masih kosong. */
-export function initializeStorage() {
-  if (!storage.has(STORAGE_KEYS.tournaments)) seedDemo();
-  if (!storage.has(STORAGE_KEYS.admin)) storage.set(STORAGE_KEYS.admin, createAdminRecord());
-  if (!storage.has(STORAGE_KEYS.settings)) storage.set(STORAGE_KEYS.settings, defaultSettings());
-  [STORAGE_KEYS.registrations, STORAGE_KEYS.payments, STORAGE_KEYS.brackets, STORAGE_KEYS.matches].forEach((k) => {
-    if (!storage.has(k)) storage.set(k, []);
-  });
-}

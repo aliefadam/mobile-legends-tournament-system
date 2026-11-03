@@ -106,7 +106,9 @@ export function collectExistingKeys(registrations, tournamentId) {
   registrations
     .filter((r) => r.tournament_id === tournamentId && r.payment_status !== "rejected")
     .forEach((r) =>
-      r.slots.forEach((s) => [...s.players, ...s.substitutes].forEach((p) => p.ml_id && set.add(playerKey(p))))
+      (r.slots || []).forEach((s) =>
+        [...(s.players || []), ...(s.substitutes || [])].forEach((p) => p.ml_id && set.add(playerKey(p)))
+      )
     );
   return set;
 }

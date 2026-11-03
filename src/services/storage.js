@@ -1,59 +1,34 @@
 import { DATA_KEYS, STORAGE_KEYS } from "../constants";
 
-const ERROR_EVENT = "tms:storage-error";
+const ERROR_EVENT = "tms:api-error";
+
+async function request(path, options = {}) {
+  const response = await fetch(path, {
+    credentials: "same-origin",
+    ...options,
+    headers: { "Content-Type": "application/json", ...options.headers },
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(result.error || `Permintaan gagal (${response.status}).`);
+  return result;
+}
 
 export const storage = {
-  has(key) {
-    try {
-      return localStorage.getItem(key) !== null;
-    } catch {
-      return false;
-    }
-  },
-  get(key, fallback = null) {
-    try {
-      const raw = localStorage.getItem(key);
-      if (raw === null) return fallback;
-      return JSON.parse(raw);
-    } catch (e) {
-      console.warn("[storage] gagal membaca", key, e);
-      return fallback;
-    }
-  },
-  set(key, value) {
-    try {
-      localStorage.setItem(key, JSON.stringify(value));
-      return true;
-    } catch (e) {
-      console.warn("[storage] gagal menyimpan", key, e);
-      window.dispatchEvent(new CustomEvent(ERROR_EVENT, { detail: e }));
-      return false;
-    }
-  },
-  remove(key) {
-    try {
-      localStorage.removeItem(key);
-    } catch {
-      /* ignore */
-    }
-  },
-  usage() {
-    try {
-      let bytes = 0;
-      DATA_KEYS.forEach((k) => {
-        const v = localStorage.getItem(k);
-        if (v) bytes += (k.length + v.length) * 2;
-      });
-      return bytes;
-    } catch {
-      return 0;
-    }
-  },
-  snapshot() {
-    const data = {};
-    DATA_KEYS.forEach((k) => {
-      data[k] = this.get(k, k === STORAGE_KEYS.settings || k === STORAGE_KEYS.admin ? {} : []);
-    });
+  load: () => request("/api/data"),
+  save: (changes) => request("/api/data", { method: "PUT", body: JSON.stringify({ changes }) }),
+  register: (registration, payment) =>
+    request("/api/registration", { method: "POST", body: JSON.stringify({ registration, payment }) }),
+  lookupRegistration: (id, whatsapp) =>
+    request(`/api/registration?id=${encodeURIComponent(id)}&whatsapp=${encodeURIComponent(whatsapp)}`),
+  replaceProof: (id, whatsapp, proof, name) =>
+    request("/api/registration/proof", { method: "POST", body: JSON.stringify({ id, whatsapp, proof, name }) }),
+  login: (username, password, remember) =>
+    request("/api/auth/login", { method: "POST", body: JSON.stringify({ username, password, remember }) }),
+  session: () => request("/api/auth/session"),
+  logout: () => request("/api/auth/logout", { method: "POST", body: "{}" }),
+  changeCredentials: (currentPassword, username, password) =>
+    request("/api/auth/credentials", { method: "PUT", body: JSON.stringify({ currentPassword, username, password }) }),
+  snapshot(data) {
     return { app: "mlbb-tms", version: 1, exported_at: new Date().toISOString(), data };
   },
   validateSnapshot(snap) {
@@ -64,21 +39,28 @@ export const storage = {
     for (const k of arrays) {
       if (snap.data[k] !== undefined && !Array.isArray(snap.data[k])) return `Data "${k}" harus berupa array.`;
     }
+    if (snap.data[STORAGE_KEYS.settings] !== undefined &&
+      (!snap.data[STORAGE_KEYS.settings] || typeof snap.data[STORAGE_KEYS.settings] !== "object" || Array.isArray(snap.data[STORAGE_KEYS.settings]))) {
+      return `Data "${STORAGE_KEYS.settings}" harus berupa objek.`;
+    }
     if (!Array.isArray(snap.data[STORAGE_KEYS.tournaments])) return "Data turnamen tidak ditemukan dalam file.";
     return null;
   },
-  restore(snap) {
-    const err = this.validateSnapshot(snap);
-    if (err) return { ok: false, error: err };
-    for (const k of DATA_KEYS) {
-      if (snap.data[k] === undefined) continue;
-      if (!this.set(k, snap.data[k])) return { ok: false, error: "Penyimpanan penuh atau tidak tersedia." };
+  async restore(snap) {
+    const error = this.validateSnapshot(snap);
+    if (error) return { ok: false, error };
+    const changes = Object.fromEntries(DATA_KEYS.filter((key) => key !== STORAGE_KEYS.admin && snap.data[key] !== undefined).map((key) => [key, snap.data[key]]));
+    try {
+      await this.save(changes);
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: err.message };
     }
-    return { ok: true };
-  },
-  clearAll() {
-    DATA_KEYS.forEach((k) => this.remove(k));
   },
 };
+
+export function reportStorageError(error) {
+  window.dispatchEvent(new CustomEvent(ERROR_EVENT, { detail: error }));
+}
 
 export const STORAGE_ERROR_EVENT = ERROR_EVENT;

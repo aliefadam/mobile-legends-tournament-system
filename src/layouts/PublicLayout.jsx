@@ -79,15 +79,14 @@ export default function PublicLayout() {
             <ul className="space-y-2 text-sm">
               <li><Link className="hover:text-electric-700" to="/">Daftar Turnamen</Link></li>
               <li><Link className="hover:text-electric-700" to="/status">Cek Status Pendaftaran</Link></li>
-              <li><Link className="hover:text-electric-700" to="/admin">Admin Panel</Link></li>
             </ul>
           </div>
           <div>
             <h4 className="mb-3 text-sm font-bold text-slate-900">Kontak Panitia</h4>
-            <a href={`https://wa.me/${settings.system.contact_whatsapp}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm hover:text-electric-700">
+            <a href={`https://wa.me/${settings.system.contact_whatsapp}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm hover:text-electric-700">
               <Icon name="phone-call" /> +{settings.system.contact_whatsapp}
             </a>
-            <p className="mt-3 text-xs text-slate-500">Aplikasi ini berjalan sepenuhnya di browser Anda menggunakan LocalStorage.</p>
+            <p className="mt-3 text-xs text-slate-500">Data turnamen tersimpan dengan aman.</p>
           </div>
         </div>
         <div className="border-t border-slate-200 py-4 text-center text-xs text-slate-500">© {new Date().getFullYear()} {settings.system.site_name}. Mobile Legends Tournament Management System.</div>

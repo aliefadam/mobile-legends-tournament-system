@@ -10,8 +10,6 @@ export const STORAGE_KEYS = {
 
 export const DATA_KEYS = Object.values(STORAGE_KEYS);
 
-export const DEFAULT_ADMIN = { username: "admin", password: "admin123" };
-
 export const TOURNAMENT_STATUS = [
   { value: "draft", label: "Draft" },
   { value: "published", label: "Published" },

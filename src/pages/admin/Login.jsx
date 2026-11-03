@@ -18,17 +18,15 @@ export default function Login() {
 
   if (authed) return <Navigate to={loc.state?.from || "/admin"} replace />;
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     if (!form.username.trim() || !form.password) return setError("Username dan password wajib diisi.");
     setLoading(true);
-    setTimeout(() => {
-      const res = login(form.username, form.password, form.remember);
-      setLoading(false);
-      if (!res.ok) return setError(res.error);
-      toast.success("Selamat datang kembali!");
-      navigate(loc.state?.from || "/admin", { replace: true });
-    }, 500);
+    const res = await login(form.username, form.password, form.remember);
+    setLoading(false);
+    if (!res.ok) return setError(res.error);
+    toast.success("Selamat datang kembali!");
+    navigate(loc.state?.from || "/admin", { replace: true });
   };
 
   return (
@@ -43,7 +41,7 @@ export default function Login() {
           <h1 className="text-2xl font-extrabold text-navy-900">Login Admin</h1>
           <p className="mt-1 text-sm text-slate-500">Masuk untuk mengelola turnamen.</p>
           <div className="mt-6 space-y-4">
-            <Input label="Username" icon="user" autoComplete="username" value={form.username} onChange={(e) => { setForm({ ...form, username: e.target.value }); setError(""); }} placeholder="admin" />
+            <Input label="Username" icon="user" autoComplete="username" value={form.username} onChange={(e) => { setForm({ ...form, username: e.target.value }); setError(""); }} />
             <Input
               label="Password"
               icon="lock"
@@ -67,7 +65,7 @@ export default function Login() {
             <Button type="submit" full size="lg" loading={loading} icon="sign-in-alt">Masuk</Button>
           </div>
           <div className="mt-5 rounded-xl bg-electric-50 p-3 text-xs text-electric-800">
-            <b>Akun demo:</b> admin / admin123. Autentikasi hanya simulasi lokal (tanpa backend) dan bukan sistem keamanan untuk deployment publik.
+            Akun admin diatur melalui variabel environment <b>ADMIN_USERNAME</b> dan <b>ADMIN_PASSWORD</b>.
           </div>
         </form>
         <Link to="/" className="mt-5 flex items-center justify-center gap-2 text-sm font-medium text-slate-600 hover:text-electric-700">

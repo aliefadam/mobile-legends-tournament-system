@@ -23,6 +23,7 @@ temp/
 .cache/
 .sass-cache/
 *.tsbuildinfo
+.netlify/
 
 # Local editor and operating-system files
 .vscode/

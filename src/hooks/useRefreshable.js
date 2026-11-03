@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useData } from "../contexts/DataContext";
 
-/** Simulasi loading + muat ulang data dari LocalStorage. */
+/** Simulasi loading + muat ulang data dari Netlify Blobs. */
 export function useRefreshable(initialDelay = 350) {
   const { reload } = useData();
   const [loading, setLoading] = useState(true);
@@ -12,11 +12,11 @@ export function useRefreshable(initialDelay = 350) {
     return () => clearTimeout(timer.current);
   }, [initialDelay]);
 
-  const refresh = useCallback(() => {
+  const refresh = useCallback(async () => {
     setLoading(true);
-    reload();
     clearTimeout(timer.current);
-    timer.current = setTimeout(() => setLoading(false), 450);
+    await reload();
+    setLoading(false);
   }, [reload]);
 
   return { loading, refresh };
