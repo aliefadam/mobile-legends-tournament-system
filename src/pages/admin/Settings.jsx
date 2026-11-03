@@ -1,7 +1,6 @@
 import { useRef, useState } from "react";
 import { Badge, Button, Card, CardHeader, ConfirmDialog, EmptyState, FileUpload, Icon, Input, Modal, Select, Switch, Tabs } from "../../components/ui";
 import { useData } from "../../contexts/DataContext";
-import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { storage } from "../../services/storage";
 import { STORAGE_KEYS } from "../../constants";
@@ -166,32 +165,12 @@ function ContactSettings() {
 
 /* ---------------- Akun ---------------- */
 function AccountSettings() {
-  const { username, changeCredentials } = useAuth();
-  const toast = useToast();
-  const [f, setF] = useState({ currentPassword: "", username, password: "", confirm: "" });
-  const [e, setE] = useState({});
-  const save = async () => {
-    const err = {};
-    if (!f.currentPassword) err.currentPassword = "Password saat ini wajib diisi.";
-    if (!f.username.trim()) err.username = "Username wajib diisi.";
-    if (f.password && f.password.length < 12) err.password = "Password baru minimal 12 karakter.";
-    if (f.password !== f.confirm) err.confirm = "Konfirmasi password tidak sama.";
-    setE(err);
-    if (Object.keys(err).length) return;
-    const res = await changeCredentials({ currentPassword: f.currentPassword, username: f.username.trim(), password: f.password });
-    if (!res.ok) return setE({ currentPassword: res.error });
-    toast.success("Kredensial admin diperbarui.");
-    setF({ ...f, currentPassword: "", password: "", confirm: "" });
-  };
   return (
-    <Card className="max-w-xl">
-      <CardHeader title="Akun Admin" description="Kredensial dikelola di server dan password disimpan sebagai hash." />
-      <div className="space-y-4 p-5">
-        <Input label="Username" value={f.username} onChange={(ev) => setF({ ...f, username: ev.target.value })} error={e.username} />
-        <Input label="Password Saat Ini" type="password" value={f.currentPassword} onChange={(ev) => setF({ ...f, currentPassword: ev.target.value })} error={e.currentPassword} />
-        <Input label="Password Baru" type="password" value={f.password} onChange={(ev) => setF({ ...f, password: ev.target.value })} error={e.password} hint="Minimal 12 karakter. Kosongkan bila tidak ingin mengubah password." />
-        <Input label="Konfirmasi Password Baru" type="password" value={f.confirm} onChange={(ev) => setF({ ...f, confirm: ev.target.value })} error={e.confirm} />
-        <Button icon="disk" onClick={save}>Simpan Akun</Button>
+    <Card className="max-w-2xl">
+      <CardHeader title="Akun Admin" description="Kredensial mengikuti konfigurasi environment server." />
+      <div className="space-y-3 p-5 text-sm text-slate-600">
+        <p>Untuk mengubah akun admin, perbarui nilai <code className="rounded bg-slate-100 px-1.5 py-0.5">ADMIN_USERNAME</code> dan <code className="rounded bg-slate-100 px-1.5 py-0.5">ADMIN_PASSWORD</code> pada environment lokal atau produksi.</p>
+        <p>Password minimal 8 karakter. Setelah environment diperbarui, login berikutnya memakai kredensial baru dan sesi sebelumnya tidak berlaku.</p>
       </div>
     </Card>
   );

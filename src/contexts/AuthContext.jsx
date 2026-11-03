@@ -45,19 +45,9 @@ export function AuthProvider({ children }) {
     window.dispatchEvent(new Event("tms:auth-changed"));
   }, []);
 
-  const changeCredentials = useCallback(async ({ currentPassword, username: nextUsername, password }) => {
-    try {
-      const result = await storage.changeCredentials(currentPassword, nextUsername, password);
-      setUsername(result.username);
-      return { ok: true };
-    } catch (error) {
-      return { ok: false, error: error.message };
-    }
-  }, []);
-
   const value = useMemo(
-    () => ({ authed, username, loading, login, logout, changeCredentials }),
-    [authed, username, loading, login, logout, changeCredentials]
+    () => ({ authed, username, loading, login, logout }),
+    [authed, username, loading, login, logout]
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

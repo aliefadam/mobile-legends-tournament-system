@@ -64,9 +64,6 @@ export default function Login() {
             )}
             <Button type="submit" full size="lg" loading={loading} icon="sign-in-alt">Masuk</Button>
           </div>
-          <div className="mt-5 rounded-xl bg-electric-50 p-3 text-xs text-electric-800">
-            Akun admin diatur melalui variabel environment <b>ADMIN_USERNAME</b> dan <b>ADMIN_PASSWORD</b>.
-          </div>
         </form>
         <Link to="/" className="mt-5 flex items-center justify-center gap-2 text-sm font-medium text-slate-600 hover:text-electric-700">
           <Icon name="arrow-left" /> Kembali ke website

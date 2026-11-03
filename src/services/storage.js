@@ -26,8 +26,6 @@ export const storage = {
     request("/api/auth/login", { method: "POST", body: JSON.stringify({ username, password, remember }) }),
   session: () => request("/api/auth/session"),
   logout: () => request("/api/auth/logout", { method: "POST", body: "{}" }),
-  changeCredentials: (currentPassword, username, password) =>
-    request("/api/auth/credentials", { method: "PUT", body: JSON.stringify({ currentPassword, username, password }) }),
   snapshot(data) {
     return { app: "mlbb-tms", version: 1, exported_at: new Date().toISOString(), data };
   },

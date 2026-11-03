@@ -36,9 +36,6 @@ export default function PublicLayout() {
                 {l.label}
               </NavLink>
             ))}
-            <Link to="/admin" className="ml-3 inline-flex h-9 items-center gap-2 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 transition hover:border-electric-200 hover:bg-electric-50 hover:text-electric-700">
-              <Icon name="lock" /> Admin
-            </Link>
           </nav>
           <button onClick={() => setOpen((o) => !o)} className="flex h-10 w-10 items-center justify-center rounded-lg text-xl text-slate-700 hover:bg-slate-100 md:hidden" aria-label="Menu">
             <Icon name={open ? "cross" : "menu-burger"} />
@@ -53,9 +50,6 @@ export default function PublicLayout() {
                     {l.label}
                   </NavLink>
                 ))}
-                <NavLink to="/admin" className={linkCls}>
-                  Admin Panel
-                </NavLink>
               </div>
             </motion.nav>
           )}

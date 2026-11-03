@@ -81,8 +81,14 @@ function sign(value) {
   return createHmac("sha256", secret).update(value).digest("base64url");
 }
 
+function credentialVersion() {
+  const username = process.env.ADMIN_USERNAME || "";
+  const password = process.env.ADMIN_PASSWORD || "";
+  return sign(`admin:${username}\0${password}`);
+}
+
 function makeSession(username, expiresAt) {
-  const payload = Buffer.from(JSON.stringify({ username, expiresAt })).toString("base64url");
+  const payload = Buffer.from(JSON.stringify({ username, expiresAt, credentialVersion: credentialVersion() })).toString("base64url");
   return `${payload}.${sign(payload)}`;
 }
 
@@ -96,7 +102,7 @@ function verifySession(request) {
   if (actualBytes.length !== expectedBytes.length || !timingSafeEqual(actualBytes, expectedBytes)) return null;
   try {
     const session = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
-    return session.expiresAt > Date.now() ? session : null;
+    return session.expiresAt > Date.now() && session.credentialVersion === credentialVersion() ? session : null;
   } catch {
     return null;
   }
@@ -153,16 +159,16 @@ async function handle(request) {
     if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
       return json({ error: "SESSION_SECRET belum dikonfigurasi dengan minimal 32 karakter." }, 503);
     }
+    const initialUsername = process.env.ADMIN_USERNAME;
+    const initialPassword = process.env.ADMIN_PASSWORD;
+    if (!initialUsername || !initialPassword) {
+      return json({ error: "Akun admin belum dikonfigurasi. Atur ADMIN_USERNAME dan ADMIN_PASSWORD pada environment server." }, 503);
+    }
+    if (initialPassword.length < 8) {
+      return json({ error: "ADMIN_PASSWORD harus memiliki minimal 8 karakter. Perbarui environment lalu jalankan ulang server." }, 503);
+    }
     let admin = await readKey("admin", null);
-    if (!admin) {
-      const initialUsername = process.env.ADMIN_USERNAME;
-      const initialPassword = process.env.ADMIN_PASSWORD;
-      if (!initialUsername || !initialPassword) {
-        return json({ error: "Akun admin belum dikonfigurasi. Atur ADMIN_USERNAME dan ADMIN_PASSWORD di environment Netlify." }, 503);
-      }
-      if (initialPassword.length < 12) {
-        return json({ error: "ADMIN_PASSWORD harus memiliki minimal 12 karakter. Perbarui file .env lalu jalankan ulang Netlify Dev." }, 503);
-      }
+    if (!admin || admin.username !== initialUsername || !passwordMatches(initialPassword, admin.password)) {
       admin = { username: initialUsername, password: passwordRecord(initialPassword) };
       await store.setJSON("admin", admin);
     }
@@ -177,22 +183,6 @@ async function handle(request) {
   if (path === "/api/auth/logout" && method === "POST") {
     const secure = new URL(request.url).protocol === "https:" ? " Secure;" : "";
     return json({ ok: true }, 200, { "Set-Cookie": `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Strict;${secure} Max-Age=0` });
-  }
-
-  if (path === "/api/auth/credentials" && method === "PUT") {
-    if (!session) return json({ error: "Sesi admin tidak valid." }, 401);
-    const { currentPassword, username, password } = await bodyJSON(request);
-    const admin = await readKey("admin", null);
-    if (typeof currentPassword !== "string" || !admin || admin.username !== session.username || !passwordMatches(currentPassword, admin.password)) {
-      return json({ error: "Password saat ini salah." }, 403);
-    }
-    if (typeof username !== "string" || !username.trim() || (password && (typeof password !== "string" || password.length < 12))) {
-      return json({ error: "Username wajib diisi dan password baru minimal 12 karakter." }, 400);
-    }
-    const updated = { username: username.trim(), password: password ? passwordRecord(password) : admin.password };
-    await store.setJSON("admin", updated);
-    const expiresAt = Date.now() + SESSION_MS;
-    return json({ username: updated.username }, 200, { "Set-Cookie": cookieHeader(makeSession(updated.username, expiresAt), request) });
   }
 
   if (path === "/api/data" && method === "GET") {
