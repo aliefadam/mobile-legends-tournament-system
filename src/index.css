@@ -1,0 +1,141 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --color-navy-50: #eef1f9;
+  --color-navy-100: #d9deef;
+  --color-navy-200: #b3bddf;
+  --color-navy-300: #7f8cbc;
+  --color-navy-400: #4d5d94;
+  --color-navy-500: #2a3a70;
+  --color-navy-600: #1b2a5c;
+  --color-navy-700: #131f47;
+  --color-navy-800: #0e1736;
+  --color-navy-900: #0a1128;
+  --color-navy-950: #060b1c;
+
+  --color-electric-50: #eef4ff;
+  --color-electric-100: #dae6ff;
+  --color-electric-200: #bcd2ff;
+  --color-electric-300: #8db3ff;
+  --color-electric-400: #5a8cff;
+  --color-electric-500: #2f6bff;
+  --color-electric-600: #1d52e8;
+  --color-electric-700: #1941bd;
+
+  --color-accent-50: #f5f0ff;
+  --color-accent-100: #ebe0ff;
+  --color-accent-200: #d6c2ff;
+  --color-accent-300: #b895ff;
+  --color-accent-400: #9b66ff;
+  --color-accent-500: #7c3aed;
+  --color-accent-600: #6a28d4;
+  --color-accent-700: #5620ab;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: #f4f6fb;
+  color: #1e293b;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: #bcd2ff;
+}
+
+/* Scrollbar */
+.thin-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.thin-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+.thin-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* Skeleton */
+@keyframes shimmer {
+  0% {
+    background-position: -400px 0;
+  }
+  100% {
+    background-position: 400px 0;
+  }
+}
+.skeleton {
+  background: linear-gradient(90deg, #e8ecf4 25%, #f4f6fb 50%, #e8ecf4 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.3s infinite linear;
+  border-radius: 8px;
+}
+
+/* Esports hero pattern */
+.hero-grid {
+  background-image:
+    linear-gradient(rgba(90, 140, 255, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(90, 140, 255, 0.07) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.bracket-canvas {
+  background-color: #f8fafc;
+  background-image: radial-gradient(#d5dbe8 1px, transparent 1px);
+  background-size: 20px 20px;
+  touch-action: none;
+  cursor: grab;
+}
+.bracket-canvas:active {
+  cursor: grabbing;
+}
+.match-node {
+  cursor: pointer;
+}
+.match-node .match-bg {
+  transition: stroke 0.15s, filter 0.15s;
+}
+.match-node:hover .match-bg {
+  stroke: #2f6bff;
+  filter: drop-shadow(0 4px 10px rgba(47, 107, 255, 0.25));
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+.live-dot {
+  animation: pulse-dot 1.2s infinite;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
