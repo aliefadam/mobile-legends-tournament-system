@@ -1,9 +1,9 @@
 import { useRef, useState } from "react";
 import { Badge, Button, Card, CardHeader, ConfirmDialog, EmptyState, FileUpload, Icon, Input, Modal, Select, Switch, Tabs } from "../../components/ui";
 import { useData } from "../../contexts/DataContext";
-import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { storage } from "../../services/storage";
+import { STORAGE_KEYS } from "../../constants";
 import { DEFAULT_MLBB_API } from "../../services/mlbb";
 import { downloadFile, formatBytes, uid } from "../../utils/format";
 
@@ -113,10 +113,9 @@ function SystemSettings() {
   const toast = useToast();
   const [f, setF] = useState(settings.system);
   const [e, setE] = useState({});
-  const save = () => {
+  const save = async () => {
     const err = {};
     if (!f.site_name.trim()) err.site_name = "Wajib diisi.";
-    if (!/^\d{8,16}$/.test(String(f.contact_whatsapp).trim())) err.contact_whatsapp = "Gunakan format internasional tanpa +, mis. 6281234567890.";
     if (!f.mlbb_api_url.includes("{id}") || !(f.mlbb_api_url.includes("{zone}") || f.mlbb_api_url.includes("{server}"))) err.mlbb_api_url = "URL harus memuat placeholder {id} dan {zone}.";
     setE(err);
     if (Object.keys(err).length) return;
@@ -128,7 +127,6 @@ function SystemSettings() {
       <CardHeader title="Pengaturan Sistem" />
       <div className="space-y-5 p-5">
         <Input label="Nama Situs" value={f.site_name} onChange={(ev) => setF({ ...f, site_name: ev.target.value })} error={e.site_name} />
-        <Input label="WhatsApp Panitia" value={f.contact_whatsapp} onChange={(ev) => setF({ ...f, contact_whatsapp: ev.target.value.replace(/\D/g, "") })} error={e.contact_whatsapp} />
         <Input label="Endpoint Lookup Nickname MLBB" value={f.mlbb_api_url} onChange={(ev) => setF({ ...f, mlbb_api_url: ev.target.value })} error={e.mlbb_api_url} hint="Gunakan placeholder {id} dan {zone}. Respons JSON harus memuat name / nickname / username. Jangan memasukkan API secret di sini." />
         <Button size="xs" variant="ghost" icon="undo" onClick={() => setF({ ...f, mlbb_api_url: DEFAULT_MLBB_API })}>Kembalikan endpoint default</Button>
         <Button icon="disk" onClick={save}>Simpan Pengaturan</Button>
@@ -137,34 +135,42 @@ function SystemSettings() {
   );
 }
 
-/* ---------------- Akun ---------------- */
-function AccountSettings() {
-  const { username, changeCredentials } = useAuth();
+/* ---------------- Kontak Panitia ---------------- */
+function ContactSettings() {
+  const { settings, updateSettings } = useData();
   const toast = useToast();
-  const [f, setF] = useState({ currentPassword: "", username, password: "", confirm: "" });
-  const [e, setE] = useState({});
+  const [whatsapp, setWhatsapp] = useState(settings.system.contact_whatsapp || "");
+  const [error, setError] = useState("");
   const save = () => {
-    const err = {};
-    if (!f.currentPassword) err.currentPassword = "Password saat ini wajib diisi.";
-    if (!f.username.trim()) err.username = "Username wajib diisi.";
-    if (f.password && f.password.length < 6) err.password = "Password baru minimal 6 karakter.";
-    if (f.password !== f.confirm) err.confirm = "Konfirmasi password tidak sama.";
-    setE(err);
-    if (Object.keys(err).length) return;
-    const res = changeCredentials({ currentPassword: f.currentPassword, username: f.username.trim(), password: f.password });
-    if (!res.ok) return setE({ currentPassword: res.error });
-    toast.success("Kredensial admin diperbarui.");
-    setF({ ...f, currentPassword: "", password: "", confirm: "" });
+    const value = String(whatsapp).replace(/\D/g, "");
+    if (!/^\d{8,16}$/.test(value)) {
+      setError("Gunakan format internasional tanpa +, mis. 6281234567890.");
+      return;
+    }
+    updateSettings((s) => ({ ...s, system: { ...s.system, contact_whatsapp: value } }));
+    setWhatsapp(value);
+    setError("");
+    toast.success("Kontak panitia disimpan.");
   };
   return (
-    <Card className="max-w-xl">
-      <CardHeader title="Akun Admin" description="Password disimpan sebagai hash (simulasi lokal, bukan keamanan nyata)." />
+    <Card className="max-w-2xl">
+      <CardHeader title="Kontak Panitia" description="Nomor WhatsApp ini ditampilkan di footer halaman publik." />
       <div className="space-y-4 p-5">
-        <Input label="Username" value={f.username} onChange={(ev) => setF({ ...f, username: ev.target.value })} error={e.username} />
-        <Input label="Password Saat Ini" type="password" value={f.currentPassword} onChange={(ev) => setF({ ...f, currentPassword: ev.target.value })} error={e.currentPassword} />
-        <Input label="Password Baru" type="password" value={f.password} onChange={(ev) => setF({ ...f, password: ev.target.value })} error={e.password} hint="Kosongkan bila tidak ingin mengubah password." />
-        <Input label="Konfirmasi Password Baru" type="password" value={f.confirm} onChange={(ev) => setF({ ...f, confirm: ev.target.value })} error={e.confirm} />
-        <Button icon="disk" onClick={save}>Simpan Akun</Button>
+        <Input label="WhatsApp Panitia" value={whatsapp} onChange={(ev) => setWhatsapp(ev.target.value.replace(/\D/g, ""))} error={error} hint="Gunakan format internasional tanpa +, mis. 6281234567890." />
+        <Button icon="disk" onClick={save}>Simpan Kontak</Button>
+      </div>
+    </Card>
+  );
+}
+
+/* ---------------- Akun ---------------- */
+function AccountSettings() {
+  return (
+    <Card className="max-w-2xl">
+      <CardHeader title="Akun Admin" description="Kredensial mengikuti konfigurasi environment server." />
+      <div className="space-y-3 p-5 text-sm text-slate-600">
+        <p>Untuk mengubah akun admin, perbarui nilai <code className="rounded bg-slate-100 px-1.5 py-0.5">ADMIN_USERNAME</code> dan <code className="rounded bg-slate-100 px-1.5 py-0.5">ADMIN_PASSWORD</code> pada environment lokal atau produksi.</p>
+        <p>Password minimal 8 karakter. Setelah environment diperbarui, login berikutnya memakai kredensial baru dan sesi sebelumnya tidak berlaku.</p>
       </div>
     </Card>
   );
@@ -172,17 +178,25 @@ function AccountSettings() {
 
 /* ---------------- Data ---------------- */
 function DataSettings() {
-  const { tournaments, registrations, payments, brackets, matches, importData, resetData } = useData();
+  const { tournaments, registrations, payments, brackets, matches, settings, importData, resetData } = useData();
   const toast = useToast();
   const fileRef = useRef(null);
   const [pending, setPending] = useState(null);
   const [resetStep, setResetStep] = useState(0);
   const [mode, setMode] = useState("demo");
-  const used = storage.usage();
+  const snapshotData = {
+    [STORAGE_KEYS.tournaments]: tournaments,
+    [STORAGE_KEYS.registrations]: registrations,
+    [STORAGE_KEYS.payments]: payments,
+    [STORAGE_KEYS.brackets]: brackets,
+    [STORAGE_KEYS.matches]: matches,
+    [STORAGE_KEYS.settings]: settings,
+  };
+  const used = new Blob([JSON.stringify(snapshotData)]).size;
 
   const stamp = () => new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
   const exportAll = (prefix) => {
-    downloadFile(`${prefix}-${stamp()}.json`, JSON.stringify(storage.snapshot(), null, 2));
+    downloadFile(`${prefix}-${stamp()}.json`, JSON.stringify(storage.snapshot(snapshotData), null, 2));
     toast.success(prefix === "tms-backup" ? "Backup berhasil diunduh." : "Data berhasil diekspor.");
   };
 
@@ -208,10 +222,10 @@ function DataSettings() {
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <Card>
-        <CardHeader title="Penyimpanan LocalStorage" description="Seluruh data tersimpan di browser ini." />
+        <CardHeader title="Penyimpanan Data" description="Data aplikasi disimpan dan dibagikan antarperangkat." />
         <div className="p-5">
-          <div className="mb-1.5 flex justify-between text-sm"><span className="text-slate-500">Terpakai (perkiraan)</span><b>{formatBytes(used)} / ~5 MB</b></div>
-          <div className="h-2.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-gradient-to-r from-electric-500 to-accent-500" style={{ width: `${Math.min(100, (used / (5 * 1024 * 1024)) * 100)}%` }} /></div>
+          <div className="mb-1.5 flex justify-between text-sm"><span className="text-slate-500">Ukuran data saat ini (perkiraan)</span><b>{formatBytes(used)}</b></div>
+          <p className="text-xs text-slate-500">Ukuran aktual penyimpanan dapat berbeda.</p>
           <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
             {counts.map(([k, v]) => (
               <div key={k} className="rounded-xl bg-slate-50 p-3 text-center"><p className="text-xl font-extrabold text-navy-900">{v}</p><p className="text-xs text-slate-500">{k}</p></div>
@@ -244,13 +258,21 @@ function DataSettings() {
         </div>
       </Card>
 
-      <ConfirmDialog open={!!pending} onClose={() => setPending(null)} tone="warning" title="Restore data?" message={pending ? `Seluruh data saat ini akan diganti dengan isi file "${pending.name}" (${pending.snap.data.tms_tournaments?.length || 0} turnamen).` : ""} confirmLabel="Ya, Restore" acknowledge="Saya sudah membuat backup data saat ini." onConfirm={() => {
-        const res = importData(pending.snap);
+      <ConfirmDialog open={!!pending} onClose={() => setPending(null)} tone="warning" title="Restore data?" message={pending ? `Seluruh data saat ini akan diganti dengan isi file "${pending.name}" (${pending.snap.data.tms_tournaments?.length || 0} turnamen).` : ""} confirmLabel="Ya, Restore" acknowledge="Saya sudah membuat backup data saat ini." onConfirm={async () => {
+        const res = await importData(pending.snap);
         setPending(null);
         res.ok ? toast.success("Data berhasil dipulihkan.") : toast.error(res.error);
       }} />
       <ConfirmDialog open={resetStep === 1} onClose={() => setResetStep(0)} tone="warning" title="Reset seluruh data?" message="Semua turnamen, pendaftaran, pembayaran, dan bracket akan dihapus. Anda akan diminta konfirmasi sekali lagi." confirmLabel="Lanjutkan" onConfirm={() => setResetStep(2)} />
-      <ConfirmDialog open={resetStep === 2} onClose={() => setResetStep(0)} title="Konfirmasi terakhir" message="Tindakan ini permanen dan tidak dapat dibatalkan." requireText="RESET" acknowledge="Saya mengerti semua data akan hilang." confirmLabel="Reset Sekarang" onConfirm={() => { resetData(mode); setResetStep(0); toast.success(mode === "demo" ? "Data dikembalikan ke demo." : "Seluruh data dikosongkan."); }} />
+      <ConfirmDialog open={resetStep === 2} onClose={() => setResetStep(0)} title="Konfirmasi terakhir" message="Tindakan ini permanen dan tidak dapat dibatalkan." requireText="RESET" acknowledge="Saya mengerti semua data akan hilang." confirmLabel="Reset Sekarang" onConfirm={async () => {
+        try {
+          await resetData(mode);
+          setResetStep(0);
+          toast.success(mode === "demo" ? "Data dikembalikan ke demo." : "Seluruh data dikosongkan.");
+        } catch (error) {
+          toast.error(error.message || "Gagal mereset data.");
+        }
+      }} />
     </div>
   );
 }
@@ -261,7 +283,7 @@ export default function Settings() {
     <div className="space-y-5">
       <div>
         <h2 className="text-xl font-extrabold text-slate-900">Pengaturan</h2>
-        <p className="text-sm text-slate-500">Rekening & QRIS, sistem, akun admin, dan manajemen data.</p>
+        <p className="text-sm text-slate-500">Pembayaran, sistem, kontak panitia, akun admin, dan manajemen data.</p>
       </div>
       <Tabs
         value={tab}
@@ -269,12 +291,14 @@ export default function Settings() {
         tabs={[
           { value: "payment", label: "Pembayaran", icon: "wallet" },
           { value: "system", label: "Sistem", icon: "settings" },
+          { value: "contact", label: "Kontak Panitia", icon: "phone-call" },
           { value: "account", label: "Akun", icon: "user" },
           { value: "data", label: "Data", icon: "database" },
         ]}
       />
       {tab === "payment" && <PaymentSettings />}
       {tab === "system" && <SystemSettings />}
+      {tab === "contact" && <ContactSettings />}
       {tab === "account" && <AccountSettings />}
       {tab === "data" && <DataSettings />}
     </div>

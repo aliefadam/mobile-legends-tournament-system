@@ -51,7 +51,7 @@ export default function Home() {
         <div className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-electric-300/25 blur-3xl" />
         <div className="absolute -right-20 bottom-0 h-80 w-80 rounded-full bg-accent-300/25 blur-3xl" />
         <div className="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-24">
-          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="max-w-3xl">
+          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="mx-auto max-w-3xl text-center">
             <span className="inline-flex items-center gap-2 rounded-full border border-electric-200 bg-white/80 px-4 py-1.5 text-xs font-semibold text-electric-800 shadow-sm backdrop-blur">
               <Icon name="bolt" solid className="text-amber-500" /> Mobile Legends: Bang Bang Tournament Platform
             </span>
@@ -59,10 +59,10 @@ export default function Home() {
               Daftarkan tim.<br />
               <span className="bg-gradient-to-r from-electric-600 to-accent-600 bg-clip-text text-transparent">Rebut gelar juara.</span>
             </h1>
-            <p className="mt-5 max-w-xl text-base leading-relaxed text-slate-600 sm:text-lg">
+            <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-slate-600 sm:text-lg">
               Daftar turnamen Mobile Legends secara online, verifikasi ID pemain otomatis, upload bukti pembayaran, dan pantau bracket pertandingan secara langsung.
             </p>
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="mt-8 flex flex-wrap justify-center gap-3">
               <Button size="lg" variant="primary" icon="trophy" onClick={() => document.getElementById("tournaments")?.scrollIntoView({ behavior: "smooth" })}>
                 Lihat Turnamen
               </Button>

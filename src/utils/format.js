@@ -78,21 +78,6 @@ export function formatBytes(bytes) {
   return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
 }
 
-/** Non-cryptographic salted hash (simulasi lokal, bukan keamanan nyata). */
-export function hashPassword(password, salt = "tms-local-salt") {
-  const str = `${salt}:${password}`;
-  let h1 = 0xdeadbeef ^ 7,
-    h2 = 0x41c6ce57 ^ 7;
-  for (let i = 0; i < str.length; i++) {
-    const ch = str.charCodeAt(i);
-    h1 = Math.imul(h1 ^ ch, 2654435761);
-    h2 = Math.imul(h2 ^ ch, 1597334677);
-  }
-  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
-  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
-  return "h1$" + (h2 >>> 0).toString(16).padStart(8, "0") + (h1 >>> 0).toString(16).padStart(8, "0");
-}
-
 export function readFileAsDataURL(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -102,7 +87,7 @@ export function readFileAsDataURL(file) {
   });
 }
 
-/** Resize + compress image so it fits comfortably in LocalStorage. */
+/** Resize + compress uploaded images before sending them to the Netlify API. */
 export async function compressImage(file, { maxDim = 1000, quality = 0.78 } = {}) {
   const dataUrl = await readFileAsDataURL(file);
   return new Promise((resolve) => {

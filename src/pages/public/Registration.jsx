@@ -108,11 +108,12 @@ export default function Registration() {
       const paymentForm = methods.length === 1 ? { ...form, method: methods[0] } : form;
       const { registration, payment } = buildRegistration({ form: paymentForm, tournament: t, registrations, payments });
       if (registrations.some((r) => r.id === registration.id)) throw new Error("Registration ID duplikat");
+      await addRegistration(registration, payment);
       submitted.current = true;
-      addRegistration(registration, payment);
       toast.success("Pendaftaran berhasil dikirim!");
       navigate(`/tournament/${t.slug}/register/success/${registration.id}`, { replace: true });
     } catch (err) {
+      submitted.current = false;
       setSubmitting(false);
       toast.error(err.message || "Gagal menyimpan pendaftaran.");
     }

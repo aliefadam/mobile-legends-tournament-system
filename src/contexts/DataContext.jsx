@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { STORAGE_KEYS as K } from "../constants";
-import { storage } from "../services/storage";
-import { defaultSettings, initializeStorage, seedDemo } from "../services/seed";
+import { reportStorageError, storage } from "../services/storage";
+import { buildDemoData, defaultSettings } from "../services/seed";
 import { getProgress } from "../services/bracket";
 import { nowISO } from "../utils/format";
 import { uniqueSlug } from "../services/tournament";
@@ -20,58 +20,124 @@ function mergeSettings(raw) {
   };
 }
 
-function loadAll() {
-  initializeStorage();
+const EMPTY_DATA = {
+  tournaments: [],
+  registrations: [],
+  payments: [],
+  brackets: [],
+  matches: [],
+  settings: mergeSettings({ payment: { banks: [], qris: { name: "", image: null, active: false } } }),
+};
+
+function mapRemoteData(data) {
   return {
-    tournaments: storage.get(K.tournaments, []),
-    registrations: storage.get(K.registrations, []).map(stripPlayerNicknames),
-    payments: storage.get(K.payments, []),
-    brackets: storage.get(K.brackets, []),
-    matches: storage.get(K.matches, []),
-    settings: mergeSettings(storage.get(K.settings, {})),
+    tournaments: data[K.tournaments] || [],
+    registrations: (data[K.registrations] || []).map(stripPlayerNicknames),
+    payments: data[K.payments] || [],
+    brackets: data[K.brackets] || [],
+    matches: data[K.matches] || [],
+    settings: mergeSettings(data[K.settings] || {}),
   };
 }
 
 export function DataProvider({ children }) {
-  const [db, setDb] = useState(loadAll);
+  const [db, setDb] = useState(EMPTY_DATA);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const ref = useRef(db);
+  const pendingWrites = useRef(0);
+  const writeQueue = useRef(Promise.resolve(true));
+  const loadInProgress = useRef(false);
+  const silentRefreshFailed = useRef(false);
+  const loadData = useCallback(async ({ silent = false, force = false } = {}) => {
+    if (pendingWrites.current && !force) return;
+    if (loadInProgress.current) return;
+    loadInProgress.current = true;
+    if (!silent) {
+      setLoading(true);
+      setLoadError("");
+    }
+    try {
+      const { data } = await storage.load();
+      const fresh = mapRemoteData(data);
+      ref.current = fresh;
+      setDb(fresh);
+      setLoadError("");
+      silentRefreshFailed.current = false;
+    } catch (error) {
+      if (silent) {
+        if (!silentRefreshFailed.current) {
+          silentRefreshFailed.current = true;
+          reportStorageError(error);
+        }
+      }
+      else setLoadError(error.message);
+    } finally {
+      loadInProgress.current = false;
+      if (!silent) setLoading(false);
+    }
+  }, []);
 
-  const commit = useCallback((patch) => {
+  useEffect(() => {
+    storage.session().then(() => loadData()).catch((error) => {
+      setLoadError(error.message);
+      setLoading(false);
+    });
+  }, [loadData]);
+
+  useEffect(() => {
+    const onAuthChange = () => void loadData();
+    window.addEventListener("tms:auth-changed", onAuthChange);
+    return () => window.removeEventListener("tms:auth-changed", onAuthChange);
+  }, [loadData]);
+
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === "visible") void loadData({ silent: true });
+    };
+    const timer = window.setInterval(refresh, 5000);
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [loadData]);
+
+  const persist = useCallback((changes, save = () => storage.save(changes)) => {
+    pendingWrites.current += 1;
+    const operation = writeQueue.current
+      .catch(() => true)
+      .then(save)
+      .then(() => true)
+      .catch((error) => {
+        reportStorageError(error);
+        void loadData({ silent: true, force: true });
+        return false;
+      })
+      .finally(() => {
+        pendingWrites.current -= 1;
+      });
+    writeQueue.current = operation;
+    return operation;
+  }, [loadData]);
+
+  const commit = useCallback((patch, { persist: shouldPersist = true } = {}) => {
     const next = { ...ref.current, ...patch };
     ref.current = next;
     setDb(next);
-    return next;
-  }, []);
-
-  // Persist ke LocalStorage setiap koleksi berubah
-  useEffect(() => void storage.set(K.tournaments, db.tournaments), [db.tournaments]);
-  useEffect(() => void storage.set(K.registrations, db.registrations), [db.registrations]);
-  useEffect(() => void storage.set(K.payments, db.payments), [db.payments]);
-  useEffect(() => void storage.set(K.brackets, db.brackets), [db.brackets]);
-  useEffect(() => void storage.set(K.matches, db.matches), [db.matches]);
-  useEffect(() => void storage.set(K.settings, db.settings), [db.settings]);
-
-  // Sinkronisasi antar-tab
-  useEffect(() => {
-    const onStorage = (e) => {
-      if (e.key && Object.values(K).includes(e.key)) {
-        const fresh = loadAll();
-        ref.current = fresh;
-        setDb(fresh);
-      }
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
+    if (shouldPersist) {
+      const changes = Object.fromEntries(Object.entries(patch).map(([key, value]) => [K[key], value]));
+      return persist(changes);
+    }
+    return Promise.resolve(true);
+  }, [persist]);
 
   const actions = useMemo(() => {
     const cur = () => ref.current;
     return {
-      reload() {
-        const fresh = loadAll();
-        ref.current = fresh;
-        setDb(fresh);
-      },
+      reload: loadData,
       saveTournament(t) {
         const list = cur().tournaments;
         const exists = list.some((x) => x.id === t.id);
@@ -114,10 +180,12 @@ export function DataProvider({ children }) {
         commit({ tournaments: [...c.tournaments, copy] });
         return copy;
       },
-      addRegistration(registration, payment) {
+      async addRegistration(registration, payment) {
+        const saved = await persist(null, () => storage.register(registration, payment));
+        if (!saved) throw new Error("Pendaftaran gagal disimpan. Silakan coba kembali.");
         const c = cur();
         const sanitized = stripPlayerNicknames(registration);
-        commit({ registrations: [...c.registrations, sanitized], payments: [...c.payments, payment] });
+        commit({ registrations: [...c.registrations, sanitized], payments: [...c.payments, { id: payment.id, registration_id: payment.registration_id, tournament_id: payment.tournament_id, status: payment.status }] }, { persist: false });
         return sanitized;
       },
       addRegistrations(items) {
@@ -156,15 +224,15 @@ export function DataProvider({ children }) {
           ),
         });
       },
-      replaceProof(regId, dataUrl, name) {
+      async replaceProof(regId, whatsapp, dataUrl, name) {
+        const saved = await persist(null, () => storage.replaceProof(regId, whatsapp, dataUrl, name));
+        if (!saved) throw new Error("Bukti pembayaran gagal disimpan. Silakan coba kembali.");
         const c = cur();
         const now = nowISO();
         commit({
           registrations: c.registrations.map((r) => (r.id === regId ? { ...r, payment_status: "pending", updated_at: now } : r)),
-          payments: c.payments.map((p) =>
-            p.registration_id === regId ? { ...p, proof: dataUrl, proof_name: name, status: "pending", reject_note: "", updated_at: now } : p
-          ),
-        });
+          payments: c.payments.map((p) => p.registration_id === regId ? { ...p, status: "pending" } : p),
+        }, { persist: false });
       },
       saveBracket(bracket, matches) {
         const c = cur();
@@ -199,31 +267,46 @@ export function DataProvider({ children }) {
         const next = typeof updater === "function" ? updater(cur().settings) : { ...cur().settings, ...updater };
         commit({ settings: next });
       },
-      importData(snapshot) {
-        const res = storage.restore(snapshot);
-        if (res.ok) {
-          const fresh = loadAll();
-          ref.current = fresh;
-          setDb(fresh);
-        }
-        return res;
+      async importData(snapshot) {
+        const error = storage.validateSnapshot(snapshot);
+        if (error) return { ok: false, error };
+        const changes = Object.fromEntries(
+          Object.keys(K)
+            .filter((key) => key !== "admin" && snapshot.data[K[key]] !== undefined)
+            .map((key) => [K[key], snapshot.data[K[key]]])
+        );
+        const ok = await persist(changes);
+        if (ok) await loadData({ force: true });
+        return ok ? { ok: true } : { ok: false, error: "Gagal mengimpor data. Silakan coba lagi." };
       },
-      resetData(mode = "demo") {
-        storage.clearAll();
-        if (mode === "demo") seedDemo();
-        const fresh = loadAll();
-        if (mode === "empty") {
-          fresh.tournaments = [];
-          fresh.registrations = [];
-          fresh.payments = [];
-        }
+      async resetData(mode = "demo") {
+        const demo = mode === "demo" ? buildDemoData() : null;
+        const fresh = demo ? {
+          tournaments: demo.tournaments,
+          registrations: demo.registrations.map(stripPlayerNicknames),
+          payments: demo.payments,
+          brackets: [],
+          matches: [],
+          settings: mergeSettings(demo.settings),
+        } : EMPTY_DATA;
+        const changes = {
+          [K.tournaments]: fresh.tournaments,
+          [K.registrations]: fresh.registrations,
+          [K.payments]: fresh.payments,
+          [K.brackets]: fresh.brackets,
+          [K.matches]: fresh.matches,
+          [K.settings]: fresh.settings,
+        };
+        if (!(await persist(changes))) return;
         ref.current = fresh;
         setDb(fresh);
       },
     };
-  }, [commit]);
+  }, [commit, loadData, persist]);
 
-  const value = useMemo(() => ({ ...db, ...actions }), [db, actions]);
+  const value = useMemo(() => ({ ...db, ...actions, loading, loadError }), [db, actions, loading, loadError]);
+  if (loading) return <div className="flex min-h-screen items-center justify-center text-sm font-medium text-slate-500">Memuat Data</div>;
+  if (loadError) return <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center"><p role="alert" className="text-sm text-red-700">Gagal memuat data: {loadError}</p><button className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white" onClick={() => void loadData()}>Coba lagi</button></div>;
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }
 

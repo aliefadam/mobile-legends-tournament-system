@@ -109,8 +109,8 @@ export default function AdminLayout() {
         title="Keluar dari Admin Panel?"
         message="Sesi Anda akan diakhiri dan Anda perlu login kembali."
         confirmLabel="Keluar"
-        onConfirm={() => {
-          logout();
+        onConfirm={async () => {
+          await logout();
           setConfirm(false);
           toast.info("Anda telah keluar.");
           navigate("/admin/login");

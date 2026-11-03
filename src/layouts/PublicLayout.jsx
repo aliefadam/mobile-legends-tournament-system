@@ -36,9 +36,6 @@ export default function PublicLayout() {
                 {l.label}
               </NavLink>
             ))}
-            <Link to="/admin" className="ml-3 inline-flex h-9 items-center gap-2 rounded-lg border border-slate-200 px-4 text-sm font-semibold text-slate-700 transition hover:border-electric-200 hover:bg-electric-50 hover:text-electric-700">
-              <Icon name="lock" /> Admin
-            </Link>
           </nav>
           <button onClick={() => setOpen((o) => !o)} className="flex h-10 w-10 items-center justify-center rounded-lg text-xl text-slate-700 hover:bg-slate-100 md:hidden" aria-label="Menu">
             <Icon name={open ? "cross" : "menu-burger"} />
@@ -53,9 +50,6 @@ export default function PublicLayout() {
                     {l.label}
                   </NavLink>
                 ))}
-                <NavLink to="/admin" className={linkCls}>
-                  Admin Panel
-                </NavLink>
               </div>
             </motion.nav>
           )}
@@ -79,15 +73,14 @@ export default function PublicLayout() {
             <ul className="space-y-2 text-sm">
               <li><Link className="hover:text-electric-700" to="/">Daftar Turnamen</Link></li>
               <li><Link className="hover:text-electric-700" to="/status">Cek Status Pendaftaran</Link></li>
-              <li><Link className="hover:text-electric-700" to="/admin">Admin Panel</Link></li>
             </ul>
           </div>
           <div>
             <h4 className="mb-3 text-sm font-bold text-slate-900">Kontak Panitia</h4>
-            <a href={`https://wa.me/${settings.system.contact_whatsapp}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm hover:text-electric-700">
+            <a href={`https://wa.me/${settings.system.contact_whatsapp}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm hover:text-electric-700">
               <Icon name="phone-call" /> +{settings.system.contact_whatsapp}
             </a>
-            <p className="mt-3 text-xs text-slate-500">Aplikasi ini berjalan sepenuhnya di browser Anda menggunakan LocalStorage.</p>
+            <p className="mt-3 text-xs text-slate-500">Data turnamen tersimpan dengan aman.</p>
           </div>
         </div>
         <div className="border-t border-slate-200 py-4 text-center text-xs text-slate-500">© {new Date().getFullYear()} {settings.system.site_name}. Mobile Legends Tournament Management System.</div>

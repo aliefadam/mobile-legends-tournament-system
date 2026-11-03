@@ -51,7 +51,7 @@ export function TournamentForm({ initial, existing, tournaments, onSubmit, onCan
         <DatePicker label="Tanggal Turnamen" required value={form.date} onChange={(v) => set({ date: v })} error={errors.date} />
         <TimePicker label="Jam Mulai Turnamen" value={form.start_time || ""} onChange={(v) => set({ start_time: v })} error={errors.start_time} />
         <Input label="Tempat Turnamen" required value={form.venue} onChange={(e) => set({ venue: e.target.value })} placeholder="Nama venue, mis. Warkop Sippo" error={errors.venue} icon="building" />
-        <Input wrapperClassName="sm:col-span-2" label="Lokasi Turnamen" required value={form.location} onChange={(e) => set({ location: e.target.value })} placeholder="Alamat / kota" error={errors.location} icon="marker" />
+        <Input label="Lokasi Turnamen" required value={form.location} onChange={(e) => set({ location: e.target.value })} placeholder="Alamat / kota" error={errors.location} icon="marker" />
         <Input
           wrapperClassName="sm:col-span-2"
           label="Link Google Maps (opsional)"

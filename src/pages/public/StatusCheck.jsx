@@ -6,26 +6,34 @@ import { useData } from "../../contexts/DataContext";
 import { useToast } from "../../contexts/ToastContext";
 import { formatDateTime, formatRupiah } from "../../utils/format";
 import { registrationTeamLabel } from "../../services/registration";
+import { storage } from "../../services/storage";
 
 export default function StatusCheck() {
   const [params] = useSearchParams();
-  const { registrations, tournaments, payments, brackets, replaceProof } = useData();
+  const { tournaments, brackets, replaceProof } = useData();
   const toast = useToast();
   const [query, setQuery] = useState(params.get("id") || "");
-  const [searched, setSearched] = useState(params.get("id") || "");
+  const [whatsapp, setWhatsapp] = useState("");
+  const [result, setResult] = useState(null);
+  const [lookupError, setLookupError] = useState("");
+  const [lookingUp, setLookingUp] = useState(false);
   const [proof, setProof] = useState(null);
 
-  const id = searched.trim().toUpperCase();
-  const reg = id ? registrations.find((r) => r.id === id) : null;
+  const reg = result?.registration || null;
   const t = reg && tournaments.find((x) => x.id === reg.tournament_id);
-  const pay = reg && payments.find((p) => p.registration_id === reg.id);
+  const pay = result?.payment;
   const bracket = t && brackets.find((b) => b.tournament_id === t.id && b.published);
 
-  const submitProof = () => {
+  const submitProof = async () => {
     if (!proof) return toast.error("Pilih bukti pembayaran terlebih dahulu.");
-    replaceProof(reg.id, proof.dataUrl, proof.name);
-    setProof(null);
-    toast.success("Bukti pembayaran baru terkirim. Menunggu verifikasi ulang.");
+    try {
+      await replaceProof(reg.id, whatsapp, proof.dataUrl, proof.name);
+      setProof(null);
+      setResult((current) => ({ ...current, registration: { ...current.registration, payment_status: "pending" }, payment: { status: "pending", reject_note: "" } }));
+      toast.success("Bukti pembayaran baru terkirim. Menunggu verifikasi ulang.");
+    } catch (error) {
+      toast.error(error.message || "Gagal mengirim bukti pembayaran.");
+    }
   };
 
   return (
@@ -35,25 +43,32 @@ export default function StatusCheck() {
           <Icon name="search" />
         </span>
         <h1 className="text-2xl font-extrabold text-navy-900 sm:text-3xl">Cek Status Pendaftaran</h1>
-        <p className="mt-2 text-sm text-slate-500">Masukkan Registration ID yang Anda terima setelah mendaftar.</p>
+        <p className="mt-2 text-sm text-slate-500">Masukkan Registration ID dan nomor WhatsApp yang digunakan saat mendaftar.</p>
       </div>
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          setSearched(query);
           setProof(null);
+          setResult(null);
+          setLookupError("");
+          setLookingUp(true);
+          storage.lookupRegistration(query.trim(), whatsapp.trim())
+            .then(setResult)
+            .catch((error) => setLookupError(error.message))
+            .finally(() => setLookingUp(false));
         }}
-        className="flex flex-col gap-3 sm:flex-row sm:items-end"
+        className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end"
       >
-        <Input wrapperClassName="flex-1" label="Registration ID" placeholder="Contoh: REG-0001" value={query} onChange={(e) => setQuery(e.target.value)} icon="ticket" />
-        <Button type="submit" size="md" icon="search" className="h-11">Cek Status</Button>
+        <Input wrapperClassName="flex-1" label="Registration ID" required placeholder="Contoh: REG-0001" value={query} onChange={(e) => setQuery(e.target.value)} icon="ticket" />
+        <Input wrapperClassName="flex-1" label="Nomor WhatsApp pendaftar" required placeholder="Contoh: 081234567890" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} icon="phone" />
+        <Button type="submit" size="md" loading={lookingUp} icon="search" className="h-11">Cek Status</Button>
       </form>
 
-      {id && !reg && (
+      {lookupError && (
         <Card className="mt-6 p-6 text-center">
           <Icon name="cross-circle" className="text-4xl text-red-400" />
-          <p className="mt-2 font-bold text-slate-900">Pendaftaran tidak ditemukan</p>
-          <p className="text-sm text-slate-500">Pastikan Registration ID yang dimasukkan sudah benar.</p>
+          <p className="mt-2 font-bold text-slate-900">{lookupError.includes("tidak ditemukan") ? "Pendaftaran tidak ditemukan" : "Tidak dapat memeriksa status"}</p>
+          <p className="text-sm text-slate-500">{lookupError.includes("tidak ditemukan") ? "Pastikan Registration ID dan nomor WhatsApp sesuai data pendaftaran." : lookupError}</p>
         </Card>
       )}
 
