@@ -28,11 +28,37 @@ export const createEmptyForm = () => ({
   agreed: false,
 });
 
-export const nextRegistrationId = (list) => {
+const eventAbbreviation = (name) => {
+  const tokens = String(name || "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .match(/[A-Za-z0-9]+/g) || [];
+  return (tokens.map((token) => /^\d+$/.test(token) ? token : token[0]).join("").toUpperCase().slice(0, 16) || "EVENT");
+};
+
+const jakartaDateTime = (value) => {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+  }).formatToParts(new Date(value)).map(({ type, value: part }) => [type, part]));
+  return {
+    date: `${parts.year}${parts.month}${parts.day}`,
+    time: `${parts.hour}${parts.minute}`,
+  };
+};
+
+export const nextRegistrationId = (list, tournament, createdAt = nowISO()) => {
+  const { date, time } = jakartaDateTime(createdAt);
+  const prefix = `REG-${eventAbbreviation(tournament?.name)}-${date}-${time}-`;
   const used = new Set(list.map((r) => r.id));
-  let n = list.reduce((m, r) => Math.max(m, parseInt(String(r.id).replace(/\D/g, ""), 10) || 0), 0) + 1;
-  while (used.has(`REG-${pad(n, 4)}`)) n++;
-  return `REG-${pad(n, 4)}`;
+  let n = list.reduce((max, registration) => {
+    const match = String(registration.id).match(/^REG-[A-Z0-9]{1,16}-\d{8}-\d{4}-(\d+)$/);
+    return match ? Math.max(max, Number(match[1]) || 0) : max;
+  }, 0) + 1;
+  let id = `${prefix}${pad(n, 4)}`;
+  while (used.has(id)) id = `${prefix}${pad(++n, 4)}`;
+  return id;
 };
 
 export const nextPaymentId = (list) => {
@@ -130,9 +156,9 @@ export const stripPlayerNicknames = (registration) => ({
 });
 
 export function buildRegistration({ form, tournament, registrations, payments }) {
-  const id = nextRegistrationId(registrations);
-  const paymentId = nextPaymentId(payments);
   const now = nowISO();
+  const id = nextRegistrationId(registrations, tournament, now);
+  const paymentId = nextPaymentId(payments);
   const teamName = form.slots[0]?.team_name.trim() || "";
   const slots = form.slots.map((s, i) => ({
     id: `${id}-S${i + 1}`,
@@ -179,9 +205,9 @@ export function createDummyRegistrations({ tournament, count, registrations, pay
   let paymentList = payments;
 
   for (let index = 0; index < count; index++) {
-    const id = nextRegistrationId(registrationList);
-    const paymentId = nextPaymentId(paymentList);
     const now = nowISO();
+    const id = nextRegistrationId(registrationList, tournament, now);
+    const paymentId = nextPaymentId(paymentList);
     const teamNumber = firstTeamNumber + index;
     const teamName = `Dummy Team ${pad(teamNumber, 3)}`;
     const slot = createSlot(0, teamName);

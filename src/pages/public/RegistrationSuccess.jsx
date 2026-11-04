@@ -214,7 +214,7 @@ export default function RegistrationSuccess() {
           </p>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <Button to={`/tournament/${t.slug}`} icon="arrow-left" variant="outline">Kembali ke Landing Page</Button>
-            <Button to="/status" icon="search">Cek Status</Button>
+            <Button to={`/status?id=${encodeURIComponent(reg.id)}`} icon="search">Cek Status</Button>
           </div>
         </div>
       </Card>

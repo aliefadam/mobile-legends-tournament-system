@@ -18,8 +18,8 @@ export const storage = {
   save: (changes) => request("/api/data", { method: "PUT", body: JSON.stringify({ changes }) }),
   register: (registration, payment) =>
     request("/api/registration", { method: "POST", body: JSON.stringify({ registration, payment }) }),
-  lookupRegistration: (id, whatsapp) =>
-    request(`/api/registration?id=${encodeURIComponent(id)}&whatsapp=${encodeURIComponent(whatsapp)}`),
+  lookupRegistration: (id) =>
+    request(`/api/registration?id=${encodeURIComponent(id)}`),
   replaceProof: (id, whatsapp, proof, name) =>
     request("/api/registration/proof", { method: "POST", body: JSON.stringify({ id, whatsapp, proof, name }) }),
   login: (username, password, remember) =>

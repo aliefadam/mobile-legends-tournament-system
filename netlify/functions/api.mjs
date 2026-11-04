@@ -206,10 +206,9 @@ async function handle(request) {
 
   if (path === "/api/registration" && method === "GET") {
     const id = (url.searchParams.get("id") || "").trim().toUpperCase();
-    const whatsapp = normalizePhone(url.searchParams.get("whatsapp"));
-    if (!id || !whatsapp) return json({ error: "Registration ID dan WhatsApp wajib diisi." }, 400);
+    if (!id) return json({ error: "Registration ID wajib diisi." }, 400);
     const data = await readData(store);
-    const reg = data.tms_registrations.find((item) => item.id === id && normalizePhone(item.whatsapp) === whatsapp);
+    const reg = data.tms_registrations.find((item) => item.id === id);
     if (!reg) return json({ error: "Pendaftaran tidak ditemukan." }, 404);
     const tournament = data.tms_tournaments.find((item) => item.id === reg.tournament_id);
     if (!tournament || tournament.status === "draft" || tournament.archived) return json({ error: "Pendaftaran tidak ditemukan." }, 404);
@@ -227,7 +226,7 @@ async function handle(request) {
     if (!tournament || tournament.status === "draft" || tournament.archived || tournament.registration_status !== "open" || tournament.status !== "registration_open") {
       return json({ error: "Pendaftaran turnamen ini tidak sedang dibuka." }, 409);
     }
-    if (!/^REG-\d{4,}$/.test(registration?.id || "") || !/^PAY-\d{4,}$/.test(payment?.id || "") ||
+    if (!/^REG-[A-Z0-9]{1,16}-\d{8}-\d{4}-\d{4,}$/.test(registration?.id || "") || !/^PAY-\d{4,}$/.test(payment?.id || "") ||
       !Array.isArray(registration.slots) || registration.slots.length !== registration.total_slot ||
       registration.slots.length < 1 || registration.slots.length > (tournament.support_multi_slot ? 2 : 1) ||
       !/^(\+?62|0)8\d{7,12}$/.test(String(registration.whatsapp || "").replace(/[\s-]/g, "")) ||
@@ -281,7 +280,8 @@ async function handle(request) {
   }
 
   if (path === "/api/registration/proof" && method === "POST") {
-    const { id, whatsapp, proof, name } = await bodyJSON(request);
+    const { id: rawId, whatsapp, proof, name } = await bodyJSON(request);
+    const id = String(rawId || "").trim().toUpperCase();
     if (!validImage(proof) || typeof name !== "string") return json({ error: "Bukti pembayaran tidak valid." }, 400);
     const data = await readData(store);
     const index = data.tms_registrations.findIndex((item) => item.id === id && normalizePhone(item.whatsapp) === normalizePhone(whatsapp));

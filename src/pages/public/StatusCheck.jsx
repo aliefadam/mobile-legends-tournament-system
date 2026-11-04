@@ -26,8 +26,9 @@ export default function StatusCheck() {
 
   const submitProof = async () => {
     if (!proof) return toast.error("Pilih bukti pembayaran terlebih dahulu.");
+    if (!whatsapp.trim()) return toast.error("Masukkan nomor WhatsApp pendaftar untuk verifikasi.");
     try {
-      await replaceProof(reg.id, whatsapp, proof.dataUrl, proof.name);
+      await replaceProof(reg.id, whatsapp.trim(), proof.dataUrl, proof.name);
       setProof(null);
       setResult((current) => ({ ...current, registration: { ...current.registration, payment_status: "pending" }, payment: { status: "pending", reject_note: "" } }));
       toast.success("Bukti pembayaran baru terkirim. Menunggu verifikasi ulang.");
@@ -43,24 +44,24 @@ export default function StatusCheck() {
           <Icon name="search" />
         </span>
         <h1 className="text-2xl font-extrabold text-navy-900 sm:text-3xl">Cek Status Pendaftaran</h1>
-        <p className="mt-2 text-sm text-slate-500">Masukkan Registration ID dan nomor WhatsApp yang digunakan saat mendaftar.</p>
+        <p className="mt-2 text-sm text-slate-500">Masukkan Registration ID untuk melihat status pendaftaran.</p>
       </div>
       <form
         onSubmit={(e) => {
           e.preventDefault();
           setProof(null);
+          setWhatsapp("");
           setResult(null);
           setLookupError("");
           setLookingUp(true);
-          storage.lookupRegistration(query.trim(), whatsapp.trim())
+          storage.lookupRegistration(query.trim())
             .then(setResult)
             .catch((error) => setLookupError(error.message))
             .finally(() => setLookingUp(false));
         }}
-        className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end"
+        className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end"
       >
-        <Input wrapperClassName="flex-1" label="Registration ID" required placeholder="Contoh: REG-0001" value={query} onChange={(e) => setQuery(e.target.value)} icon="ticket" />
-        <Input wrapperClassName="flex-1" label="Nomor WhatsApp pendaftar" required placeholder="Contoh: 081234567890" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} icon="phone" />
+        <Input wrapperClassName="flex-1" label="Registration ID" required placeholder="Contoh: REG-MLS4-20261104-1530-0001" value={query} onChange={(e) => setQuery(e.target.value.toUpperCase())} icon="ticket" />
         <Button type="submit" size="md" loading={lookingUp} icon="search" className="h-11">Cek Status</Button>
       </form>
 
@@ -68,7 +69,7 @@ export default function StatusCheck() {
         <Card className="mt-6 p-6 text-center">
           <Icon name="cross-circle" className="text-4xl text-red-400" />
           <p className="mt-2 font-bold text-slate-900">{lookupError.includes("tidak ditemukan") ? "Pendaftaran tidak ditemukan" : "Tidak dapat memeriksa status"}</p>
-          <p className="text-sm text-slate-500">{lookupError.includes("tidak ditemukan") ? "Pastikan Registration ID dan nomor WhatsApp sesuai data pendaftaran." : lookupError}</p>
+          <p className="text-sm text-slate-500">{lookupError.includes("tidak ditemukan") ? "Pastikan Registration ID sesuai bukti pendaftaran." : lookupError}</p>
         </Card>
       )}
 
@@ -108,6 +109,7 @@ export default function StatusCheck() {
                   <p className="font-bold"><Icon name="cross-circle" className="mr-2" />Pembayaran ditolak</p>
                   <p className="mt-1">Catatan panitia: {pay?.reject_note || "-"}</p>
                 </div>
+                <Input label="Nomor WhatsApp pendaftar" required placeholder="Contoh: 081234567890" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} icon="phone" />
                 <FileUpload label="Unggah ulang bukti pembayaran" value={proof} onChange={setProof} onReject={(m) => toast.error(m)} />
                 <Button icon="upload" onClick={submitProof} disabled={!proof}>Kirim Bukti Pembayaran</Button>
               </div>
