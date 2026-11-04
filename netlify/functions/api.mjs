@@ -3,7 +3,6 @@ import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypt
 
 const DATA_KEYS = ["tms_settings", "tms_tournaments", "tms_registrations", "tms_payments", "tms_brackets", "tms_matches"];
 const ARRAY_KEYS = new Set(DATA_KEYS.filter((key) => key !== "tms_settings"));
-const store = getStore({ name: "mlbb-tms", consistency: "strong" });
 const SESSION_COOKIE = "mlbb_tms_session";
 const SESSION_MS = 8 * 60 * 60 * 1000;
 const REMEMBER_MS = 7 * 24 * 60 * 60 * 1000;
@@ -18,16 +17,16 @@ const json = (body, status = 200, headers = {}) =>
     headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...headers },
   });
 
-async function readKey(key, fallback) {
+async function readKey(store, key, fallback) {
   return (await store.get(key, { type: "json" })) ?? fallback;
 }
 
-async function readData() {
-  const entries = await Promise.all(DATA_KEYS.map(async (key) => [key, await readKey(key, key === "tms_settings" ? EMPTY_SETTINGS : [])]));
+async function readData(store) {
+  const entries = await Promise.all(DATA_KEYS.map(async (key) => [key, await readKey(store, key, key === "tms_settings" ? EMPTY_SETTINGS : [])]));
   return Object.fromEntries(entries);
 }
 
-async function writeData(changes) {
+async function writeData(store, changes) {
   await Promise.all(Object.entries(changes).map(([key, value]) => store.setJSON(key, value)));
 }
 
@@ -146,6 +145,7 @@ async function handle(request) {
   const path = url.pathname.replace(/^\/\.netlify\/functions\/api/, "/api").replace(/\/+$/, "") || "/";
   const method = request.method.toUpperCase();
   const session = verifySession(request);
+  const store = getStore({ name: "mlbb-tms", consistency: "strong" });
 
   if (path === "/api/auth/session" && method === "GET") {
     return json({ authed: !!session, username: session?.username || null });
@@ -167,7 +167,7 @@ async function handle(request) {
     if (initialPassword.length < 8) {
       return json({ error: "ADMIN_PASSWORD harus memiliki minimal 8 karakter. Perbarui environment lalu jalankan ulang server." }, 503);
     }
-    let admin = await readKey("admin", null);
+    let admin = await readKey(store, "admin", null);
     if (!admin || admin.username !== initialUsername || !passwordMatches(initialPassword, admin.password)) {
       admin = { username: initialUsername, password: passwordRecord(initialPassword) };
       await store.setJSON("admin", admin);
@@ -186,7 +186,7 @@ async function handle(request) {
   }
 
   if (path === "/api/data" && method === "GET") {
-    const data = await readData();
+    const data = await readData(store);
     return json({ data: session ? data : publicData(data), authed: !!session });
   }
 
@@ -200,7 +200,7 @@ async function handle(request) {
         return json({ error: `Data "${key}" tidak valid.` }, 400);
       }
     }
-    await writeData(changes);
+    await writeData(store, changes);
     return json({ ok: true });
   }
 
@@ -208,7 +208,7 @@ async function handle(request) {
     const id = (url.searchParams.get("id") || "").trim().toUpperCase();
     const whatsapp = normalizePhone(url.searchParams.get("whatsapp"));
     if (!id || !whatsapp) return json({ error: "Registration ID dan WhatsApp wajib diisi." }, 400);
-    const data = await readData();
+    const data = await readData(store);
     const reg = data.tms_registrations.find((item) => item.id === id && normalizePhone(item.whatsapp) === whatsapp);
     if (!reg) return json({ error: "Pendaftaran tidak ditemukan." }, 404);
     const tournament = data.tms_tournaments.find((item) => item.id === reg.tournament_id);
@@ -222,7 +222,7 @@ async function handle(request) {
 
   if (path === "/api/registration" && method === "POST") {
     const { registration, payment } = await bodyJSON(request);
-    const data = await readData();
+    const data = await readData(store);
     const tournament = data.tms_tournaments.find((item) => item.id === registration?.tournament_id);
     if (!tournament || tournament.status === "draft" || tournament.archived || tournament.registration_status !== "open" || tournament.status !== "registration_open") {
       return json({ error: "Pendaftaran turnamen ini tidak sedang dibuka." }, 409);
@@ -273,7 +273,7 @@ async function handle(request) {
       }
       existingPlayerIds.add(key);
     }
-    await writeData({
+    await writeData(store, {
       tms_registrations: [...data.tms_registrations, { ...registration, payment_status: "pending" }],
       tms_payments: [...data.tms_payments, { ...payment, status: "pending", reject_note: "", verified_at: null }],
     });
@@ -283,7 +283,7 @@ async function handle(request) {
   if (path === "/api/registration/proof" && method === "POST") {
     const { id, whatsapp, proof, name } = await bodyJSON(request);
     if (!validImage(proof) || typeof name !== "string") return json({ error: "Bukti pembayaran tidak valid." }, 400);
-    const data = await readData();
+    const data = await readData(store);
     const index = data.tms_registrations.findIndex((item) => item.id === id && normalizePhone(item.whatsapp) === normalizePhone(whatsapp));
     if (index < 0) return json({ error: "Pendaftaran tidak ditemukan." }, 404);
     if (data.tms_registrations[index].payment_status !== "rejected") return json({ error: "Bukti hanya dapat diganti untuk pembayaran yang ditolak." }, 409);
@@ -292,7 +292,7 @@ async function handle(request) {
     data.tms_payments = data.tms_payments.map((item) => item.registration_id === id
       ? { ...item, proof, proof_name: name, status: "pending", reject_note: "", updated_at: now }
       : item);
-    await writeData({ tms_registrations: data.tms_registrations, tms_payments: data.tms_payments });
+    await writeData(store, { tms_registrations: data.tms_registrations, tms_payments: data.tms_payments });
     return json({ ok: true });
   }
 
