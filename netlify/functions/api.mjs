@@ -226,7 +226,7 @@ async function handle(request) {
     if (!tournament || tournament.status === "draft" || tournament.archived || tournament.registration_status !== "open" || tournament.status !== "registration_open") {
       return json({ error: "Pendaftaran turnamen ini tidak sedang dibuka." }, 409);
     }
-    if (!/^REG-[A-Z0-9]{1,16}-\d{8}-\d{4}-\d{4,}$/.test(registration?.id || "") || !/^PAY-\d{4,}$/.test(payment?.id || "") ||
+    if (!/^REG[A-Z0-9]{1,16}-\d{8,}$/.test(registration?.id || "") || !/^PAY-\d{4,}$/.test(payment?.id || "") ||
       !Array.isArray(registration.slots) || registration.slots.length !== registration.total_slot ||
       registration.slots.length < 1 || registration.slots.length > (tournament.support_multi_slot ? 2 : 1) ||
       !/^(\+?62|0)8\d{7,12}$/.test(String(registration.whatsapp || "").replace(/[\s-]/g, "")) ||

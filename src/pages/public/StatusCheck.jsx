@@ -61,7 +61,7 @@ export default function StatusCheck() {
         }}
         className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end"
       >
-        <Input wrapperClassName="flex-1" label="Registration ID" required placeholder="Contoh: REG-MLS4-20261104-1530-0001" value={query} onChange={(e) => setQuery(e.target.value.toUpperCase())} icon="ticket" />
+        <Input wrapperClassName="flex-1" label="Registration ID" required placeholder="Contoh: REGMLS4-13370001" value={query} onChange={(e) => setQuery(e.target.value.toUpperCase())} icon="ticket" />
         <Button type="submit" size="md" loading={lookingUp} icon="search" className="h-11">Cek Status</Button>
       </form>
 

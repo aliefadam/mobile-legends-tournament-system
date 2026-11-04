@@ -36,24 +36,23 @@ const eventAbbreviation = (name) => {
   return (tokens.map((token) => /^\d+$/.test(token) ? token : token[0]).join("").toUpperCase().slice(0, 16) || "EVENT");
 };
 
-const jakartaDateTime = (value) => {
+const jakartaTime = (value) => {
   const parts = Object.fromEntries(new Intl.DateTimeFormat("en-GB", {
     timeZone: "Asia/Jakarta",
     year: "numeric", month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit", hourCycle: "h23",
   }).formatToParts(new Date(value)).map(({ type, value: part }) => [type, part]));
-  return {
-    date: `${parts.year}${parts.month}${parts.day}`,
-    time: `${parts.hour}${parts.minute}`,
-  };
+  return `${parts.hour}${parts.minute}`;
 };
 
 export const nextRegistrationId = (list, tournament, createdAt = nowISO()) => {
-  const { date, time } = jakartaDateTime(createdAt);
-  const prefix = `REG-${eventAbbreviation(tournament?.name)}-${date}-${time}-`;
+  const prefix = `REG${eventAbbreviation(tournament?.name)}-${jakartaTime(createdAt)}`;
   const used = new Set(list.map((r) => r.id));
   let n = list.reduce((max, registration) => {
-    const match = String(registration.id).match(/^REG-[A-Z0-9]{1,16}-\d{8}-\d{4}-(\d+)$/);
+    const id = String(registration.id);
+    const currentFormat = id.match(/^REG[A-Z0-9]{1,16}-\d{4}(\d{4,})$/);
+    const previousFormat = id.match(/-(\d{4,})$/);
+    const match = currentFormat || previousFormat;
     return match ? Math.max(max, Number(match[1]) || 0) : max;
   }, 0) + 1;
   let id = `${prefix}${pad(n, 4)}`;

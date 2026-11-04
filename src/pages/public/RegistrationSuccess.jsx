@@ -110,7 +110,7 @@ async function drawRegistrationReceipt(registration, tournament) {
   ctx.fillText("REGISTRATION ID", padding, y);
   y += 58;
   ctx.fillStyle = "#0f172a";
-  ctx.font = `800 42px ${font}`;
+  ctx.font = `800 36px ${font}`;
   ctx.fillText(registration.id, padding, y);
   y += 38;
   ctx.strokeStyle = "#e2e8f0";
@@ -185,7 +185,7 @@ export default function RegistrationSuccess() {
         <div className="-mt-6 px-5 pb-6 sm:px-8">
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-lg shadow-navy-900/5">
             <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Registration ID</p>
-            <p className="mt-1 text-3xl font-extrabold tracking-wider text-navy-900">{reg.id}</p>
+            <p className="mt-1 text-2xl font-extrabold tracking-wider text-navy-900">{reg.id}</p>
             <div className="mt-3 flex flex-wrap justify-center gap-2">
               <Button size="sm" variant="soft" icon="copy" onClick={copy}>Salin Registration ID</Button>
               <Button size="sm" variant="outline" icon="download" onClick={downloadReceipt}>Unduh Gambar Bukti</Button>
